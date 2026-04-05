@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FightPass - Redefinir Senha</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .recovery-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #F8FAFC;
+            padding: 20px;
+        }
+        
+        .recovery-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+            border: 1px solid #E2E8F0;
+            text-align: center;
+        }
+
+        .input-recovery {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 12px;
+            border: 1px solid #E2E8F0;
+            background-color: #F8FAFC;
+            font-size: 15px;
+            margin-bottom: 20px;
+            outline: none;
+        }
+
+        .input-recovery:focus {
+            border-color: #3B82F6;
+        }
+    </style>
+</head>
+<body class="light-theme">
+
+    <div class="recovery-container">
+        <main class="recovery-card">
+            <header style="margin-bottom: 30px;">
+                <div class="logo" style="margin-bottom: 15px; color: #3B82F6; font-weight: bold; font-size: 24px;">FightPass</div>
+                <h1 style="font-size: 22px; color: #1E293B; margin-bottom: 10px;">Redefinir Senha</h1>
+                <p style="color: #64748B; font-size: 14px;">Digite seu e-mail para receber as instruções de recuperação.</p>
+            </header>
+
+            <form action="sucesso-email.html">
+                <input type="email" class="input-recovery" placeholder="Digite seu email" required>
+                
+                <button type="submit" class="btn-primary" style="width: 100%; padding: 14px; background: #3B82F6; color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer;">
+                    Verificar
+                </button>
+            </form>
+
+            <div style="margin-top: 25px; font-size: 14px;">
+                <a href="login.html" style="color: #64748B; text-decoration: none;">Voltar para o login</a>
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>

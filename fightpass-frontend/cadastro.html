@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FightPass - Cadastro</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .register-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .register-card {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+            border: 1px solid #E2E8F0;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-field-arredondado {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 12px;
+            border: 1px solid #E2E8F0;
+            background-color: #F8FAFC;
+            font-size: 15px;
+            color: #1E293B;
+            transition: border-color 0.2s;
+        }
+
+        .input-field-arredondado::placeholder {
+            color: #94A3B8;
+        }
+
+        .input-field-arredondado:focus {
+            border-color: #3B82F6;
+            outline: none;
+        }
+
+        .select-field {
+            appearance: none;
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748B%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E');
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            color: #64748B; 
+        }
+        
+        .select-field option {
+            color: #1E293B;
+        }
+    </style>
+</head>
+<body class="light-theme">
+    
+    <div class="register-container">
+        <main class="register-card">
+            
+            <header style="text-align: center; margin-bottom: 35px;">
+                <div class="logo" style="margin-bottom: 10px;">FightPass</div>
+                <h1 style="font-size: 24px; color: #1E293B; margin-bottom: 5px;">Cadastro</h1>
+                <p style="color: #64748B; font-size: 14px;">Cliente ou Instituição (gestão completa).</p>
+            </header>
+
+            <form action="cadastro_sucesso.html" method="post">
+                
+                <div class="input-group">
+                    <input type="text" name="nome" class="input-field-arredondado" placeholder="Nome completo / Razão social" required>
+                </div>
+
+                <div class="input-group">
+                    <input type="email" name="email" class="input-field-arredondado" placeholder="Seu melhor email" required>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" name="senha" class="input-field-arredondado" placeholder="Senha (mín. 6 caracteres)" required minlength="6">
+                </div>
+
+                <div class="input-group" style="position: relative;">
+                    <select name="tipo" class="input-field-arredondado select-field" required>
+                        <option value="" disabled selected>Sou:</option>
+                        <option value="cliente">Cliente (Aluno/Instrutor)</option>
+                        <option value="instituicao">Instituição (Academia/Dojo)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <input type="text" name="documento" class="input-field-arredondado" placeholder="CPF ou CNPJ" required>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button type="submit" class="btn-primary" style="width: 100%; padding: 15px; background: #3B82F6; color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 16px;">
+                        Criar Conta
+                    </button>
+                </div>
+
+                <div style="text-align: center; margin-top: 25px; font-size: 14px; color: #64748B;">
+                    Já tem conta? 
+                    <a href="login.html" style="color: #3B82F6; text-decoration: none; font-weight: 600; margin-left: 5px;">
+                        Entrar
+                    </a>
+                </div>
+
+            </form>
+        </main>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FightPass - Agendar Aula</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="light-theme">
+    <main class="main-content">
+        <header style="margin-bottom: 30px;">
+            <h1 style="font-size: 28px;">Agendar aula</h1>
+            <p style="color: #64748B;">Recorrência até o fim do ano e modo teste.</p>
+        </header>
+
+        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; align-items: start;">
+            
+            <section class="card-white">
+                <h2 style="font-size: 20px; margin-bottom: 25px;">Novo agendamento</h2>
+                
+                <div class="input-group">
+                    <label>Modalidade</label>
+                    <select class="input-field" style="appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748B%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 15px center;">
+                        <option>Muay Thai</option>
+                        <option>Jiu-Jitsu</option>
+                        <option>Judô</option>
+                        <option>Boxe</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Dia</label>
+                    <select class="input-field">
+                        <option>Quarta</option>
+                        <option>Sexta</option>
+                        <option>Sábado</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Horário</label>
+                    <input type="time" class="input-field" value="19:00">
+                </div>
+
+                <div style="margin: 20px 0; display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer;">
+                        <input type="checkbox" checked style="width: 18px; height: 18px;"> 
+                        Repetir semanalmente até 15/12
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer;">
+                        <input type="checkbox" style="width: 18px; height: 18px;"> 
+                        Modo teste (remove em 7 dias)
+                    </label>
+                </div>
+
+                <button class="btn-primary" style="margin-top: 10px;">Confirmar</button>
+            </section>
+
+            <section class="card-white">
+                <h2 style="font-size: 18px; margin-bottom: 20px;">Prévia da grade</h2>
+                <table style="width: 100%; border-collapse: collapse; min-width: auto;">
+                    <thead>
+                        <tr style="text-align: left; color: #64748B; font-size: 14px;">
+                            <th style="padding-bottom: 15px;">Dia</th>
+                            <th style="padding-bottom: 15px;">Hora</th>
+                            <th style="padding-bottom: 15px;">Modalidade</th>
+                        </tr>
+                    </thead>
+                    <tbody style="font-size: 14px;">
+                        <tr style="border-top: 1px solid #F1F5F9;">
+                            <td style="padding: 15px 0;">Qua</td>
+                            <td style="padding: 15px 0;">19:00</td>
+                            <td style="padding: 15px 0; display: flex; align-items: center; gap: 5px;">
+                                Muay Thai <span style="color: #22C55E;">✓</span>
+                            </td>
+                        </tr>
+                        <tr style="border-top: 1px solid #F1F5F9;">
+                            <td style="padding: 15px 0;">Sex</td>
+                            <td style="padding: 15px 0;">07:30</td>
+                            <td style="padding: 15px 0; display: flex; align-items: center; gap: 5px;">
+                                Judô <span style="color: #22C55E;">✓</span>
+                            </td>
+                        </tr>
+                        <tr style="border-top: 1px solid #F1F5F9;">
+                            <td style="padding: 15px 0;">Sáb</td>
+                            <td style="padding: 15px 0;">10:00</td>
+                            <td style="padding: 15px 0; display: flex; align-items: center; gap: 5px;">
+                                Jiu-Jitsu <span style="color: #22C55E;">✓</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+        </div>
+    </main>
+
+    <script src="js/layout.js"></script>
+</body>
+</html>
