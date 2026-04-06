@@ -7,9 +7,6 @@ O projeto esta dividido em duas partes:
 - `fightpass-frontend`: prototipo visual em HTML, CSS e JavaScript
 - `fightpass-backend`: API em Node.js com persistencia em MySQL
 
-Nesta etapa do TCC, frontend e backend permanecem separados. A integracao entre as camadas sera realizada nas proximas entregas.
-
-## Get Started
 
 ### 1. Pre-requisitos
 
@@ -167,11 +164,6 @@ Arquivo inicial:
 fightpass-frontend/index.html
 ```
 
-Observacao importante:
-
-- nesta etapa, o frontend nao consome o backend diretamente
-- o backend ja esta pronto para integracao futura
-- as telas funcionam como base visual e documental da aplicacao
 
 ## Estrutura do projeto
 
@@ -255,18 +247,3 @@ Exemplos de e-mails inseridos:
 - `contato@dojosakura.com`
 - `carlos@dojosakura.com`
 - `joao@fightpass.com`
-
-Se quiser controlar melhor os testes, o caminho mais simples e rodar o seed e depois cadastrar novos usuarios pela rota de registro.
-
-## Documentacao complementar
-
-O material de apoio da documentacao do TCC esta em:
-
-- `docs/tcc-documentacao-base.md`
-
-## Proximos passos
-
-- integrar frontend e backend
-- adicionar testes automatizados
-- implantar a aplicacao em nuvem
-- preparar ambiente online para apresentacao da banca
