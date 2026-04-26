@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../../database/connection");
 const { asyncHandler, success, auth } = require("../../lib/http");
+const { ensureInstitutionAccess } = require("../../lib/business");
 
 const router = express.Router();
 
@@ -24,6 +25,7 @@ router.get(
   "/institution/:id",
   auth(["institution_admin", "instructor"]),
   asyncHandler(async (req, res) => {
+    await ensureInstitutionAccess(req.user.sub, req.params.id);
     const rows = await db.query(
       `SELECT
           (SELECT COUNT(*) FROM enrollments WHERE institution_id = ? AND status = 'active') AS active_students,

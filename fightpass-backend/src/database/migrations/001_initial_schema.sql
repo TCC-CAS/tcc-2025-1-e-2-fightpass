@@ -49,6 +49,18 @@ CREATE TABLE IF NOT EXISTS addresses (
   CONSTRAINT fk_addresses_institution FOREIGN KEY (institution_id) REFERENCES institutions(id)
 );
 
+CREATE TABLE IF NOT EXISTS institution_platform_subscriptions (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  institution_id BIGINT UNSIGNED NOT NULL UNIQUE,
+  monthly_fee_cents INT NOT NULL DEFAULT 29900,
+  status ENUM('active', 'inactive', 'overdue') NOT NULL DEFAULT 'active',
+  starts_at DATE NOT NULL,
+  next_billing_at DATE NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_platform_subscriptions_institution FOREIGN KEY (institution_id) REFERENCES institutions(id)
+);
+
 CREATE TABLE IF NOT EXISTS institution_user (
   id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   institution_id BIGINT UNSIGNED NOT NULL,
@@ -118,6 +130,46 @@ CREATE TABLE IF NOT EXISTS enrollments (
   CONSTRAINT fk_enrollments_modality FOREIGN KEY (modality_id) REFERENCES modalities(id)
 );
 
+CREATE TABLE IF NOT EXISTS access_plans (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  code VARCHAR(50) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL,
+  description VARCHAR(255) NOT NULL,
+  price_cents INT NOT NULL,
+  session_limit INT NULL,
+  duration_days INT NOT NULL DEFAULT 30,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS student_access_passes (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  student_id BIGINT UNSIGNED NOT NULL,
+  plan_id BIGINT UNSIGNED NOT NULL,
+  source ENUM('trial', 'payment', 'admin') NOT NULL DEFAULT 'payment',
+  status ENUM('active', 'expired', 'cancelled') NOT NULL DEFAULT 'active',
+  starts_at DATETIME NOT NULL,
+  expires_at DATETIME NOT NULL,
+  sessions_total INT NULL,
+  sessions_used INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_access_passes_student FOREIGN KEY (student_id) REFERENCES users(id),
+  CONSTRAINT fk_access_passes_plan FOREIGN KEY (plan_id) REFERENCES access_plans(id)
+);
+
+CREATE TABLE IF NOT EXISTS student_trial_uses (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  document VARCHAR(20) NOT NULL UNIQUE,
+  student_id BIGINT UNSIGNED NOT NULL,
+  access_pass_id BIGINT UNSIGNED NOT NULL,
+  started_at DATETIME NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_trial_uses_student FOREIGN KEY (student_id) REFERENCES users(id),
+  CONSTRAINT fk_trial_uses_pass FOREIGN KEY (access_pass_id) REFERENCES student_access_passes(id)
+);
+
 CREATE TABLE IF NOT EXISTS bookings (
   id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   student_id BIGINT UNSIGNED NOT NULL,
@@ -130,6 +182,33 @@ CREATE TABLE IF NOT EXISTS bookings (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_bookings_student FOREIGN KEY (student_id) REFERENCES users(id),
   CONSTRAINT fk_bookings_schedule FOREIGN KEY (class_schedule_id) REFERENCES class_schedules(id)
+);
+
+CREATE TABLE IF NOT EXISTS access_pass_usage (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  access_pass_id BIGINT UNSIGNED NOT NULL,
+  booking_id BIGINT UNSIGNED NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_access_usage_pass FOREIGN KEY (access_pass_id) REFERENCES student_access_passes(id),
+  CONSTRAINT fk_access_usage_booking FOREIGN KEY (booking_id) REFERENCES bookings(id)
+);
+
+CREATE TABLE IF NOT EXISTS payment_simulations (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  student_id BIGINT UNSIGNED NOT NULL,
+  plan_id BIGINT UNSIGNED NOT NULL,
+  access_pass_id BIGINT UNSIGNED NULL,
+  method ENUM('pix', 'boleto') NOT NULL,
+  amount_cents INT NOT NULL,
+  status ENUM('pending', 'paid', 'cancelled') NOT NULL DEFAULT 'pending',
+  pix_code VARCHAR(255) NULL,
+  boleto_code VARCHAR(120) NULL,
+  paid_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_payment_simulations_student FOREIGN KEY (student_id) REFERENCES users(id),
+  CONSTRAINT fk_payment_simulations_plan FOREIGN KEY (plan_id) REFERENCES access_plans(id),
+  CONSTRAINT fk_payment_simulations_pass FOREIGN KEY (access_pass_id) REFERENCES student_access_passes(id)
 );
 
 CREATE TABLE IF NOT EXISTS attendance_qr_tokens (

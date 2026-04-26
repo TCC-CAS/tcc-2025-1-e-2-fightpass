@@ -6,42 +6,43 @@
     <title>FightPass - Mapa de Academias</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="light-theme">
+<body class="light-theme app-shell" data-page="mapa">
     <main class="main-content">
         <header style="margin-bottom: 30px;">
             <h1>Mapa de academias</h1>
-            <p style="color: #64748B;">Pesquise e filtre por modalidades.</p>
+            <p style="color: #64748B;">Pesquise instituições por modalidade ou nome.</p>
         </header>
 
-        <div style="display:flex; gap:10px; margin-bottom: 20px;">
-            <button class="btn-outline" style="background: white; border: 1px solid #E2E8F0; padding: 8px 15px; border-radius: 20px;">Judô</button>
-            <button class="btn-outline" style="background: white; border: 1px solid #E2E8F0; padding: 8px 15px; border-radius: 20px;">Jiu-Jitsu</button>
-            <button class="btn-outline" style="background: white; border: 1px solid #E2E8F0; padding: 8px 15px; border-radius: 20px;">Muay Thai</button>
-            <button class="btn-outline" style="background: white; border: 1px solid #E2E8F0; padding: 8px 15px; border-radius: 20px;">Boxe</button>
+        <div id="map-message" hidden></div>
+
+        <div class="card-white" style="margin-bottom: 20px;">
+            <div class="input-group">
+                <label for="map-search">Buscar academia</label>
+                <input id="map-search" type="search" class="input-field" placeholder="Digite parte do nome da instituição">
+            </div>
+            <div id="modality-list" class="button-row"></div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
-            <div class="card-white" style="height: 500px; margin-top: 0; background: #E2E8F0; display: flex; align-items: center; justify-content: center; position: relative;">
-                <span style="color: #64748B; font-weight: 600;">[ Google Maps Estilizado ]</span>
-                <div style="position: absolute; top: 30%; left: 40%; width: 12px; height: 12px; background: var(--primary-blue); border-radius: 50%; border: 2px solid white;"></div>
-                <div style="position: absolute; top: 60%; left: 70%; width: 12px; height: 12px; background: var(--primary-blue); border-radius: 50%; border: 2px solid white;"></div>
-            </div>
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px;">
+            <section class="card-white" style="min-height: 420px; background: #E2E8F0; position: relative; overflow: hidden;">
+                <div style="position: absolute; inset: 0; background: linear-gradient(135deg, #E2E8F0, #F8FAFC);"></div>
+                <div style="position: relative; z-index: 1; height: 100%; display: grid; place-items: center; text-align: center; color: #64748B; font-weight: 600;">
+                    <span>Serão retornados pela API</span>
+                </div>
+            </section>
 
-            <div style="display: flex; flex-direction: column; gap: 15px;">
-                <div class="card-white" style="margin-top: 0; padding: 15px;">
-                    <strong>Gracie Center</strong>
-                    <p style="font-size: 12px; color: #64748B;">4,8 ★ • 1,2 km</p>
-                    <p style="font-size: 13px; margin-top: 5px;">Jiu-Jitsu</p>
-                </div>
-                <div class="card-white" style="margin-top: 0; padding: 15px;">
-                    <strong>Dojo Sakura</strong>
-                    <p style="font-size: 12px; color: #64748B;">4,6 ★ • 2,0 km</p>
-                    <p style="font-size: 13px; margin-top: 5px;">Judô • Karate</p>
-                </div>
-            </div>
+            <aside>
+                <div id="institution-list"></div>
+                <section id="institution-details" class="card-white" style="margin-top: 20px;">
+                    <h2>Detalhes</h2>
+                    <p style="color: #64748B; margin-top: 8px;">Selecione uma instituição para visualizar dados, modalidades e turmas vinculadas.</p>
+                </section>
+            </aside>
         </div>
     </main>
 
+    <script src="js/api.js"></script>
     <script src="js/layout.js"></script>
+    <script src="js/pages.js"></script>
 </body>
 </html>

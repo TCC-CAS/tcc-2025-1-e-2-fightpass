@@ -18,6 +18,15 @@ module.exports = {
     secret: process.env.JWT_SECRET || "change-this-secret",
     expiresIn: process.env.JWT_EXPIRES_IN || "8h"
   },
+  email: {
+    smtpHost: process.env.SMTP_HOST || "smtp-relay.brevo.com",
+    smtpPort: Number(process.env.SMTP_PORT || 587),
+    smtpSecure: String(process.env.SMTP_SECURE || "false").toLowerCase() === "true",
+    smtpUser: process.env.SMTP_USER || "",
+    smtpPass: process.env.SMTP_PASS || "",
+    from: process.env.EMAIL_FROM || "FightPass <seu-email@exemplo.com>",
+    passwordResetUrl: process.env.PASSWORD_RESET_URL || "http://127.0.0.1:5500/fightpass-frontend/redefinir-senha.html"
+  },
   checkinTokenTtlSeconds: Number(process.env.CHECKIN_TOKEN_TTL_SECONDS || 45),
   bookingCancellationLimitHours: Number(process.env.BOOKING_CANCELLATION_LIMIT_HOURS || 2)
 };

@@ -1,48 +1,29 @@
 # FightPass
 
-Plataforma academica para gestao de academias e alunos de artes marciais, desenvolvida como projeto de TCC.
+Plataforma acadêmica para gestão de academias e alunos de artes marciais, desenvolvida como projeto de TCC.
 
-O projeto esta dividido em duas partes:
+## Estrutura
 
-- `fightpass-frontend`: prototipo visual em HTML, CSS e JavaScript
-- `fightpass-backend`: API em Node.js com persistencia em MySQL
+- `fightpass-frontend`: frontend estático em HTML, CSS e JavaScript integrado à API.
+- `fightpass-backend`: API Node.js + Express, banco MySQL
+- `docs`: Documentação
 
+## Pré-requisitos
 
-### 1. Pre-requisitos
-
-Antes de comecar, tenha instalado na maquina:
-
-- Node.js 22 ou superior
-- npm 10 ou superior
-- MySQL 8 ou superior
+- Node.js 22
+- npm 10
+- MySQL 8
 - Git
 
-Para confirmar:
+## Configuração do banco
 
-```powershell
-node -v
-npm -v
-mysql --version
-```
-
-### 2. Clonar o projeto
-
-```powershell
-git clone <url-do-repositorio>
-cd tcc-2025-1-e-2-fightpass
-```
-
-### 3. Configurar o banco de dados
-
-Abra o MySQL e crie o banco que sera usado pela aplicacao:
+Crie o banco de dados no MySQL:
 
 ```sql
 CREATE DATABASE fightpass CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-Se quiser usar outro nome de banco, ele deve ser o mesmo valor informado no arquivo `.env` do backend.
-
-### 4. Configurar o backend
+## Backend
 
 Entre na pasta do backend:
 
@@ -50,13 +31,13 @@ Entre na pasta do backend:
 cd fightpass-backend
 ```
 
-Copie o arquivo de exemplo de ambiente:
+Copie o arquivo de ambiente:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Depois ajuste os dados do banco no arquivo `.env`:
+Configure as variáveis:
 
 ```env
 PORT=3000
@@ -72,119 +53,66 @@ DB_PASSWORD=
 
 JWT_SECRET=change-this-secret
 JWT_EXPIRES_IN=8h
+
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+EMAIL_FROM=FightPass <seu-email-verificado@exemplo.com>
+PASSWORD_RESET_URL=http://127.0.0.1:5500/fightpass-frontend/redefinir-senha.html
+
 CHECKIN_TOKEN_TTL_SECONDS=45
 BOOKING_CANCELLATION_LIMIT_HOURS=2
 ```
 
-Campos principais:
-
-- `DB_HOST`: endereco do servidor MySQL
-- `DB_PORT`: porta do MySQL
-- `DB_NAME`: nome do banco de dados
-- `DB_USER`: usuario do MySQL
-- `DB_PASSWORD`: senha do MySQL
-- `JWT_SECRET`: chave usada para gerar os tokens de autenticacao
-
-### 5. Instalar dependencias do backend
+Instale dependências, crie as tabelas e carregue dados de demonstração:
 
 ```powershell
 npm install
-```
-
-### 6. Criar a estrutura do banco
-
-Execute a migration:
-
-```powershell
 npm run migrate
-```
-
-Esse comando cria as tabelas principais do sistema, incluindo:
-
-- usuarios
-- perfis
-- instituicoes
-- modalidades
-- turmas e horarios
-- matriculas
-- agendamentos
-- tokens de check-in
-- presencas
-- avaliacoes
-- historico de progresso
-
-### 7. Popular o banco com dados de exemplo
-
-```powershell
 npm run seed
 ```
 
-O seed insere dados iniciais para testes, como:
-
-- perfis de usuario
-- modalidades
-- uma instituicao de exemplo
-- um instrutor
-- um aluno
-- turmas e horarios
-- agendamentos iniciais
-- avaliacoes e snapshots de progresso
-
-### 8. Executar a API
+Execute a API:
 
 ```powershell
 npm run dev
 ```
 
-Por padrao, a API ficara disponivel em:
+Teste de saúde:
 
 ```text
-http://localhost:3000
+GET http://localhost:3000/api/health
 ```
 
-Teste de saude da API:
+## Frontend
 
-```text
-GET /api/health
-```
-
-Exemplo completo:
-
-```text
-http://localhost:3000/api/health
-```
-
-### 9. Executar o frontend
-
-O frontend esta em HTML estatico. Nesta fase, ele pode ser aberto diretamente no navegador ou executado com uma extensao de servidor local, como Live Server.
-
-Arquivo inicial:
+Abra o arquivo:
 
 ```text
 fightpass-frontend/index.html
 ```
 
+O frontend consome a API em `http://localhost:3000/api`
 
-## Estrutura do projeto
-
-```text
-fightpass/
-|-- fightpass-frontend/
-|-- fightpass-backend/
-|   |-- scripts/
-|   |-- src/
-|   |   |-- config/
-|   |   |-- database/
-|   |   |   |-- migrations/
-|   |   |   |-- seeders/
-|   |   |-- lib/
-|   |   |-- routes/
-|-- docs/
+```javascript
+localStorage.setItem("fightpass.apiBaseUrl", "http://localhost:3000/api")
 ```
 
-## Principais rotas da API
+## Usuários de demonstração
 
-Autenticacao:
+Todos usam a senha `FightPass123` após executar o seed.
+
+| Perfil | Email |
+|---|---|
+| Administrador da instituição | `contato@dojosakura.com` |
+| Instrutor | `carlos@dojosakura.com` |
+| Aluno | `joao@fightpass.com` |
+
+## Rotas principais
+
+Autenticação:
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
@@ -193,13 +121,20 @@ Autenticacao:
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 
+Recuperação de senha:
+
+- Configure `SMTP_USER` e `SMTP_PASS` para envio real via Brevo SMTP ou outro SMTP.
+- No Brevo, use `smtp-relay.brevo.com`, porta `587`, SMTP login e SMTP key.
+- Configure `PASSWORD_RESET_URL` para apontar para a tela `redefinir-senha.html` servida pelo frontend.
+- Se as credenciais SMTP estiverem vazias, o token ainda é salvo em `password_reset_tokens`, mas o email não é enviado.
+
 Perfil:
 
 - `GET /api/profile`
 - `PUT /api/profile`
 - `PUT /api/profile/password`
 
-Catalogo:
+Catálogo:
 
 - `GET /api/modalities`
 - `GET /api/map/search`
@@ -226,7 +161,14 @@ Check-in:
 - `POST /api/checkin/confirm`
 - `GET /api/checkin/history`
 
-Avaliacoes:
+Planos e pagamentos fictícios:
+
+- `GET /api/plans`
+- `GET /api/access/me`
+- `POST /api/payments/simulate`
+- `POST /api/payments/:id/confirm`
+
+Avaliações:
 
 - `GET /api/students/:id/evaluations`
 - `POST /api/students/:id/evaluations`
@@ -237,13 +179,3 @@ Dashboards:
 
 - `GET /api/dashboard/student`
 - `GET /api/dashboard/institution/:id`
-
-## Usuarios de exemplo
-
-Os seeds usam contas demonstrativas. As senhas estao salvas com hash no banco.
-
-Exemplos de e-mails inseridos:
-
-- `contato@dojosakura.com`
-- `carlos@dojosakura.com`
-- `joao@fightpass.com`

@@ -7,11 +7,12 @@ const bookingRoutes = require("./modules/bookings");
 const checkinRoutes = require("./modules/checkin");
 const evaluationRoutes = require("./modules/evaluations");
 const dashboardRoutes = require("./modules/dashboard");
+const accessRoutes = require("./modules/access");
 
 const router = express.Router();
 
 router.get("/health", (req, res) => {
-  res.json({ success: true, message: "API do FightPass operacional" });
+  res.json({ success: true, message: "API fightpass rodando" });
 });
 
 router.use("/auth", authRoutes);
@@ -22,5 +23,6 @@ router.use("/bookings", bookingRoutes);
 router.use("/checkin", checkinRoutes);
 router.use("/", evaluationRoutes);
 router.use("/dashboard", dashboardRoutes);
+router.use("/", accessRoutes);
 
 module.exports = router;

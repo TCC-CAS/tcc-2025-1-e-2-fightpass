@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../../database/connection");
-const { asyncHandler, success, ApiError } = require("../../lib/http");
+const { asyncHandler, success, ApiError, auth } = require("../../lib/http");
+const { ensureInstitutionAccess } = require("../../lib/business");
 
 const router = express.Router();
 
@@ -85,15 +86,29 @@ router.get(
       [req.params.id]
     );
 
+    institution.classes = await db.query(
+      `SELECT c.id, c.modality_id, c.title, c.description, c.capacity, c.status,
+              m.name AS modality_name,
+              cs.id AS schedule_id, cs.day_of_week, cs.start_time, cs.end_time, cs.room_name
+       FROM classes c
+       INNER JOIN modalities m ON m.id = c.modality_id
+       LEFT JOIN class_schedules cs ON cs.class_id = c.id
+       WHERE c.institution_id = ? AND c.status = 'active'
+       ORDER BY c.title, cs.day_of_week, cs.start_time`,
+      [req.params.id]
+    );
+
     return success(res, institution, "Instituicao carregada com sucesso");
   })
 );
 
 router.get(
   "/institutions/:id/students",
+  auth(["institution_admin", "instructor"]),
   asyncHandler(async (req, res) => {
+    await ensureInstitutionAccess(req.user.sub, req.params.id);
     const data = await db.query(
-      `SELECT u.id, u.name, u.email, e.status AS enrollment_status, m.name AS modality_name
+      `SELECT u.id, u.name, u.email, e.status AS enrollment_status, m.id AS modality_id, m.name AS modality_name
        FROM enrollments e
        INNER JOIN users u ON u.id = e.student_id
        INNER JOIN modalities m ON m.id = e.modality_id

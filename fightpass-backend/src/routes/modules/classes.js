@@ -2,8 +2,17 @@ const express = require("express");
 const { body } = require("express-validator");
 const db = require("../../database/connection");
 const { asyncHandler, created, success, validateRequest, auth, ApiError } = require("../../lib/http");
+const {
+  auditLog,
+  ensureInstitutionAccess,
+  ensureInstitutionModality
+} = require("../../lib/business");
 
 const router = express.Router();
+
+function normalizeTime(value) {
+  return value && value.length === 5 ? `${value}:00` : value;
+}
 
 router.get(
   "/",
@@ -23,7 +32,7 @@ router.get(
 
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     const data = await db.query(
-      `SELECT c.id, c.title, c.description, c.capacity, c.status,
+      `SELECT c.id, c.institution_id, c.modality_id, c.title, c.description, c.capacity, c.status,
               i.name AS institution_name, m.name AS modality_name
        FROM classes c
        INNER JOIN institutions i ON i.id = c.institution_id
@@ -32,6 +41,22 @@ router.get(
        ORDER BY c.title`,
       params
     );
+
+    if (data.length) {
+      const classIds = data.map((item) => item.id);
+      const schedules = await db.query(
+        `SELECT id, class_id, day_of_week, start_time, end_time, room_name
+         FROM class_schedules
+         WHERE class_id IN (${classIds.map(() => "?").join(", ")})
+         ORDER BY day_of_week, start_time`,
+        classIds
+      );
+
+      data.forEach((item) => {
+        item.schedules = schedules.filter((schedule) => schedule.class_id === item.id);
+      });
+    }
+
     return success(res, data, "Turmas carregadas com sucesso");
   })
 );
@@ -69,12 +94,22 @@ router.post(
     body("modalityId").isInt({ min: 1 }).withMessage("Modalidade invalida"),
     body("title").trim().notEmpty().withMessage("Titulo obrigatorio"),
     body("dayOfWeek").isInt({ min: 0, max: 6 }).withMessage("Dia da semana invalido"),
-    body("startTime").matches(/^\d{2}:\d{2}:\d{2}$/).withMessage("Horario inicial invalido"),
-    body("endTime").matches(/^\d{2}:\d{2}:\d{2}$/).withMessage("Horario final invalido"),
+    body("startTime").matches(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).withMessage("Horario inicial invalido"),
+    body("endTime").matches(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).withMessage("Horario final invalido"),
     body("capacity").isInt({ min: 1 }).withMessage("Capacidade invalida")
   ],
   validateRequest,
   asyncHandler(async (req, res) => {
+    await ensureInstitutionAccess(req.user.sub, req.body.institutionId);
+    await ensureInstitutionModality(req.body.institutionId, req.body.modalityId);
+
+    const startTime = normalizeTime(req.body.startTime);
+    const endTime = normalizeTime(req.body.endTime);
+
+    if (startTime >= endTime) {
+      throw new ApiError(400, "Horario final deve ser posterior ao horario inicial");
+    }
+
     const connection = await db.pool.getConnection();
 
     try {
@@ -97,11 +132,19 @@ router.post(
         [
           classInsert.insertId,
           req.body.dayOfWeek,
-          req.body.startTime,
-          req.body.endTime,
+          startTime,
+          endTime,
           req.body.roomName || null
         ]
       );
+
+      await auditLog(req.user.sub, "classes.create", "classes", classInsert.insertId, {
+        institutionId: req.body.institutionId,
+        modalityId: req.body.modalityId,
+        dayOfWeek: req.body.dayOfWeek,
+        startTime,
+        endTime
+      }, connection);
 
       await connection.commit();
 
