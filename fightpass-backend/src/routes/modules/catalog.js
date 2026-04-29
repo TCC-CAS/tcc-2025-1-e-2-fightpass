@@ -1,9 +1,44 @@
 const express = require("express");
+const { body, query } = require("express-validator");
 const db = require("../../database/connection");
-const { asyncHandler, success, ApiError, auth } = require("../../lib/http");
-const { ensureInstitutionAccess } = require("../../lib/business");
+const { asyncHandler, success, ApiError, auth, validateRequest } = require("../../lib/http");
+const { auditLog, ensureInstitutionAccess } = require("../../lib/business");
+const { resolveCep, upsertInstitutionAddress } = require("../../services/locationService");
 
 const router = express.Router();
+
+router.get(
+  "/locations/cep/:cep",
+  auth(["institution_admin", "instructor"]),
+  asyncHandler(async (req, res) => {
+    const data = await resolveCep(req.params.cep, req.query.number || null, req.query.complement || null);
+    return success(res, data, "Localizacao carregada com sucesso");
+  })
+);
+
+router.put(
+  "/institutions/:id/address",
+  auth(["institution_admin"]),
+  [
+    body("zipCode").trim().notEmpty().withMessage("CEP obrigatorio"),
+    body("number").trim().notEmpty().withMessage("Numero obrigatorio"),
+    body("complement").optional({ nullable: true }).trim()
+  ],
+  validateRequest,
+  asyncHandler(async (req, res) => {
+    await ensureInstitutionAccess(req.user.sub, req.params.id, ["institution_admin"]);
+    const address = await upsertInstitutionAddress(req.params.id, {
+      zipCode: req.body.zipCode,
+      number: req.body.number,
+      complement: req.body.complement || null
+    });
+    await auditLog(req.user.sub, "institutions.address.update", "institutions", req.params.id, {
+      zipCode: address.zipCode,
+      geocodingStatus: address.geocodingStatus
+    });
+    return success(res, address, "Endereco atualizado com sucesso");
+  })
+);
 
 router.get(
   "/modalities",
@@ -15,8 +50,13 @@ router.get(
 
 router.get(
   "/map/search",
+  [
+    query("modality").optional().trim(),
+    query("search").optional().trim()
+  ],
+  validateRequest,
   asyncHandler(async (req, res) => {
-    const conditions = [];
+    const conditions = ["i.status = 'active'", "a.latitude IS NOT NULL", "a.longitude IS NOT NULL"];
     const params = [];
 
     if (req.query.modality) {
@@ -33,7 +73,8 @@ router.get(
 
     const data = await db.query(
       `SELECT DISTINCT i.id, i.name, i.description, i.phone, i.email, i.status,
-              a.city, a.state, a.neighborhood, a.latitude, a.longitude
+              a.street, a.number, a.complement, a.city, a.state, a.neighborhood,
+              a.zip_code, a.formatted_address, a.latitude, a.longitude, a.geocoding_status
        FROM institutions i
        LEFT JOIN addresses a ON a.institution_id = i.id
        LEFT JOIN institution_modality im ON im.institution_id = i.id
@@ -65,7 +106,8 @@ router.get(
   asyncHandler(async (req, res) => {
     const rows = await db.query(
       `SELECT i.id, i.name, i.description, i.phone, i.email, i.status,
-              a.street, a.number, a.neighborhood, a.city, a.state, a.zip_code, a.latitude, a.longitude
+              a.street, a.number, a.complement, a.neighborhood, a.city, a.state,
+              a.zip_code, a.formatted_address, a.latitude, a.longitude, a.geocoding_status
        FROM institutions i
        LEFT JOIN addresses a ON a.institution_id = i.id
        WHERE i.id = ? LIMIT 1`,

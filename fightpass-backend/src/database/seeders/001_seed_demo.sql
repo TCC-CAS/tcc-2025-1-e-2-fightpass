@@ -25,11 +25,27 @@ UPDATE modalities SET name = 'Judô', description = 'Treinamento de judô' WHERE
 INSERT IGNORE INTO institutions (id, owner_user_id, name, legal_document, email, phone, description, status) VALUES
   (1, 1, 'Dojo Sakura', '12.345.678/0001-90', 'contato@dojosakura.com', '(11) 3000-2000', 'Academia especializada em artes marciais tradicionais e modernas.', 'active');
 
-INSERT IGNORE INTO institution_platform_subscriptions (id, institution_id, monthly_fee_cents, status, starts_at, next_billing_at) VALUES
-  (1, 1, 29900, 'active', '2026-01-01', '2026-05-01');
+INSERT INTO platform_plans (id, code, name, description, price_cents, audience, duration_days, is_active) VALUES
+  (1, 'dojo_monthly', 'Plano DOJO', 'Mensalidade para academias parceiras publicarem e gerenciarem aulas no FightPass.', 6900, 'dojo', 30, 1)
+ON DUPLICATE KEY UPDATE
+  name = VALUES(name),
+  description = VALUES(description),
+  price_cents = VALUES(price_cents),
+  audience = VALUES(audience),
+  duration_days = VALUES(duration_days),
+  is_active = VALUES(is_active);
 
-INSERT IGNORE INTO addresses (institution_id, street, number, neighborhood, city, state, zip_code, latitude, longitude) VALUES
-  (1, 'Rua das Artes', '120', 'Centro', 'São Paulo', 'SP', '01000-000', -23.5505200, -46.6333080);
+INSERT IGNORE INTO institution_platform_subscriptions (id, institution_id, plan_id, monthly_fee_cents, status, starts_at, next_billing_at, paid_until) VALUES
+  (1, 1, 1, 6900, 'inactive', '2026-01-01', NULL, NULL);
+
+UPDATE institution_platform_subscriptions
+SET plan_id = 1, monthly_fee_cents = 6900, status = 'inactive', next_billing_at = NULL, paid_until = NULL
+WHERE id = 1;
+
+INSERT IGNORE INTO addresses
+  (institution_id, street, number, neighborhood, city, state, zip_code, formatted_address, latitude, longitude, geocoding_provider, geocoding_status, geocoded_at)
+VALUES
+  (1, 'Rua das Artes', '120', 'Centro', 'São Paulo', 'SP', '01000-000', 'Rua das Artes, 120 - Centro - São Paulo - SP - 01000-000', -23.5505200, -46.6333080, 'seed', 'success', NOW());
 
 UPDATE addresses SET city = 'São Paulo' WHERE institution_id = 1;
 
@@ -95,3 +111,14 @@ INSERT IGNORE INTO student_progress_snapshots (institution_id, student_user_id, 
   (1, 3, '2026-02-01', 7.30, 80.00, 'medium'),
   (1, 3, '2026-03-01', 7.90, 88.00, 'low'),
   (1, 3, '2026-04-01', 8.20, 92.00, 'low');
+
+INSERT IGNORE INTO modalities (id, name, slug, description) VALUES
+  (5, 'MMA', 'mma', 'Treinamento de artes marciais mistas'),
+  (6, 'Karate', 'karate', 'Treinamento de karate'),
+  (7, 'Taekwondo', 'taekwondo', 'Treinamento de taekwondo');
+
+INSERT IGNORE INTO institution_modality (institution_id, modality_id) VALUES
+  (1, 1),
+  (1, 5),
+  (1, 6),
+  (1, 7);

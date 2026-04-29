@@ -4,11 +4,6 @@ const mysql = require("mysql2/promise");
 const env = require("../src/config/env");
 
 async function main() {
-  const sql = fs.readFileSync(
-    path.join(__dirname, "..", "src", "database", "migrations", "001_initial_schema.sql"),
-    "utf8"
-  );
-
   const connection = await mysql.createConnection({
     host: env.db.host,
     port: env.db.port,
@@ -18,9 +13,37 @@ async function main() {
     multipleStatements: true
   });
 
-  await connection.query(sql);
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      filename VARCHAR(191) PRIMARY KEY,
+      executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  const migrationsDir = path.join(__dirname, "..", "src", "database", "migrations");
+  const files = fs.readdirSync(migrationsDir)
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
+
+  for (const file of files) {
+    const [executed] = await connection.execute(
+      "SELECT filename FROM schema_migrations WHERE filename = ? LIMIT 1",
+      [file]
+    );
+
+    if (executed.length) {
+      console.log(`Migration ignorada: ${file}`);
+      continue;
+    }
+
+    const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
+    await connection.query(sql);
+    await connection.execute("INSERT INTO schema_migrations (filename) VALUES (?)", [file]);
+    console.log(`Migration executada: ${file}`);
+  }
+
   await connection.end();
-  console.log("Migration executada com sucesso.");
+  console.log("Migrations executadas com sucesso.");
 }
 
 main().catch((error) => {

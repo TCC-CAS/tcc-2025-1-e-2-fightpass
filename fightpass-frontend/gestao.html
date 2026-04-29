@@ -15,6 +15,91 @@
 
         <div id="management-message" hidden></div>
 
+        <section id="dojo-subscription" class="card-white" style="margin-bottom: 24px;"></section>
+
+        <section class="card-white" style="padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; margin-bottom: 16px; color: #1E293B;">Endereço do DOJO</h2>
+            <form id="dojo-address-form" style="display: grid; grid-template-columns: 1fr 160px 1fr auto; gap: 14px; align-items: end;">
+                <div class="input-group">
+                    <label for="dojo-zip-code">CEP</label>
+                    <input id="dojo-zip-code" name="zipCode" class="input-field" placeholder="00000-000" required>
+                </div>
+                <div class="input-group">
+                    <label for="dojo-number">Número</label>
+                    <input id="dojo-number" name="number" class="input-field" required>
+                </div>
+                <div class="input-group">
+                    <label for="dojo-complement">Complemento</label>
+                    <input id="dojo-complement" name="complement" class="input-field">
+                </div>
+                <button class="btn-primary" type="submit" style="width:auto; padding: 13px 22px;">Salvar</button>
+            </form>
+            <div id="dojo-address-preview" style="color:#64748B; margin-top:12px;"></div>
+        </section>
+
+        <section class="card-white" style="padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; margin-bottom: 16px; color: #1E293B;">Disponibilizar aula</h2>
+            <form id="dojo-class-form" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;">
+                <div class="input-group">
+                    <label for="class-title">Título</label>
+                    <input id="class-title" name="title" class="input-field" required>
+                </div>
+                <div class="input-group">
+                    <label for="class-modality">Modalidade</label>
+                    <select id="class-modality" name="modalityId" class="input-field" required></select>
+                </div>
+                <div class="input-group">
+                    <label for="class-capacity">Capacidade</label>
+                    <input id="class-capacity" name="capacity" type="number" min="1" value="20" class="input-field" required>
+                </div>
+                <div class="input-group">
+                    <label for="class-day">Dia</label>
+                    <select id="class-day" name="dayOfWeek" class="input-field" required>
+                        <option value="1">Segunda</option>
+                        <option value="2">Terça</option>
+                        <option value="3">Quarta</option>
+                        <option value="4">Quinta</option>
+                        <option value="5">Sexta</option>
+                        <option value="6">Sábado</option>
+                        <option value="0">Domingo</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="class-start">Início</label>
+                    <input id="class-start" name="startTime" type="time" class="input-field" required>
+                </div>
+                <div class="input-group">
+                    <label for="class-end">Fim</label>
+                    <input id="class-end" name="endTime" type="time" class="input-field" required>
+                </div>
+                <div class="input-group">
+                    <label for="class-room">Sala</label>
+                    <input id="class-room" name="roomName" class="input-field">
+                </div>
+                <div class="input-group">
+                    <label for="class-description">Descrição</label>
+                    <input id="class-description" name="description" class="input-field">
+                </div>
+                <button class="btn-primary" type="submit" style="grid-column: 1 / -1; width:auto; justify-self:start; padding: 12px 24px;">Criar aula</button>
+            </form>
+        </section>
+
+        <section class="card-white" style="padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 18px; margin-bottom: 16px; color: #1E293B;">Aulas do DOJO</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aula</th>
+                        <th>Modalidade</th>
+                        <th>Horários</th>
+                        <th>Status</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="dojo-classes-table"></tbody>
+            </table>
+        </section>
+
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
             <div class="card-white" style="padding: 20px;">
                 <span style="color: #64748B; font-size: 14px; font-weight: 600;">Total de alunos ativos</span>

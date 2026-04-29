@@ -27,6 +27,10 @@ module.exports = {
     from: process.env.EMAIL_FROM || "FightPass <seu-email@exemplo.com>",
     passwordResetUrl: process.env.PASSWORD_RESET_URL || "http://127.0.0.1:5500/fightpass-frontend/redefinir-senha.html"
   },
+  location: {
+    googleGeocodingApiKey: process.env.GOOGLE_GEOCODING_API_KEY || "",
+    geocodingTimeoutMs: Number(process.env.GEOCODING_TIMEOUT_MS || 5000)
+  },
   checkinTokenTtlSeconds: Number(process.env.CHECKIN_TOKEN_TTL_SECONDS || 45),
   bookingCancellationLimitHours: Number(process.env.BOOKING_CANCELLATION_LIMIT_HOURS || 2)
 };

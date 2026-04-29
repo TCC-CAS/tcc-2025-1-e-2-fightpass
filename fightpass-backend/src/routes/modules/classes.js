@@ -1,5 +1,5 @@
 const express = require("express");
-const { body } = require("express-validator");
+const { body, param } = require("express-validator");
 const db = require("../../database/connection");
 const { asyncHandler, created, success, validateRequest, auth, ApiError } = require("../../lib/http");
 const {
@@ -7,6 +7,7 @@ const {
   ensureInstitutionAccess,
   ensureInstitutionModality
 } = require("../../lib/business");
+const { ensureActiveInstitutionSubscription } = require("../../services/dojoSubscriptionService");
 
 const router = express.Router();
 
@@ -14,10 +15,26 @@ function normalizeTime(value) {
   return value && value.length === 5 ? `${value}:00` : value;
 }
 
+async function findClassForManagement(classId) {
+  const rows = await db.query(
+    `SELECT id, institution_id, modality_id, title, status
+     FROM classes
+     WHERE id = ?
+     LIMIT 1`,
+    [classId]
+  );
+
+  if (!rows[0]) {
+    throw new ApiError(404, "Turma nao encontrada");
+  }
+
+  return rows[0];
+}
+
 router.get(
   "/",
   asyncHandler(async (req, res) => {
-    const conditions = [];
+    const conditions = ["c.status = 'active'"];
     const params = [];
 
     if (req.query.institutionId) {
@@ -101,6 +118,7 @@ router.post(
   validateRequest,
   asyncHandler(async (req, res) => {
     await ensureInstitutionAccess(req.user.sub, req.body.institutionId);
+    await ensureActiveInstitutionSubscription(req.body.institutionId);
     await ensureInstitutionModality(req.body.institutionId, req.body.modalityId);
 
     const startTime = normalizeTime(req.body.startTime);
@@ -156,6 +174,115 @@ router.post(
     } finally {
       connection.release();
     }
+  })
+);
+
+router.put(
+  "/:id",
+  auth(["institution_admin", "instructor"]),
+  [
+    param("id").isInt({ min: 1 }).withMessage("Turma invalida"),
+    body("modalityId").isInt({ min: 1 }).withMessage("Modalidade invalida"),
+    body("title").trim().notEmpty().withMessage("Titulo obrigatorio"),
+    body("description").optional({ nullable: true }).trim(),
+    body("capacity").isInt({ min: 1 }).withMessage("Capacidade invalida"),
+    body("status").optional().isIn(["active", "inactive"]).withMessage("Status invalido")
+  ],
+  validateRequest,
+  asyncHandler(async (req, res) => {
+    const classData = await findClassForManagement(req.params.id);
+    await ensureInstitutionAccess(req.user.sub, classData.institution_id);
+    await ensureActiveInstitutionSubscription(classData.institution_id);
+    await ensureInstitutionModality(classData.institution_id, req.body.modalityId);
+
+    await db.query(
+      `UPDATE classes
+       SET modality_id = ?, title = ?, description = ?, capacity = ?, status = ?
+       WHERE id = ?`,
+      [
+        req.body.modalityId,
+        req.body.title,
+        req.body.description || null,
+        req.body.capacity,
+        req.body.status || classData.status,
+        req.params.id
+      ]
+    );
+    await auditLog(req.user.sub, "classes.update", "classes", req.params.id, {
+      institutionId: classData.institution_id,
+      modalityId: req.body.modalityId
+    });
+
+    const rows = await db.query(
+      "SELECT id, institution_id, modality_id, title, description, capacity, status FROM classes WHERE id = ? LIMIT 1",
+      [req.params.id]
+    );
+    return success(res, rows[0], "Turma atualizada com sucesso");
+  })
+);
+
+router.patch(
+  "/:id/status",
+  auth(["institution_admin", "instructor"]),
+  [
+    param("id").isInt({ min: 1 }).withMessage("Turma invalida"),
+    body("status").isIn(["active", "inactive"]).withMessage("Status invalido")
+  ],
+  validateRequest,
+  asyncHandler(async (req, res) => {
+    const classData = await findClassForManagement(req.params.id);
+    await ensureInstitutionAccess(req.user.sub, classData.institution_id);
+    await ensureActiveInstitutionSubscription(classData.institution_id);
+
+    await db.query("UPDATE classes SET status = ? WHERE id = ?", [req.body.status, req.params.id]);
+    await auditLog(req.user.sub, "classes.status.update", "classes", req.params.id, {
+      status: req.body.status,
+      institutionId: classData.institution_id
+    });
+
+    return success(res, { id: Number(req.params.id), status: req.body.status }, "Status da turma atualizado com sucesso");
+  })
+);
+
+router.post(
+  "/:id/schedules",
+  auth(["institution_admin", "instructor"]),
+  [
+    param("id").isInt({ min: 1 }).withMessage("Turma invalida"),
+    body("dayOfWeek").isInt({ min: 0, max: 6 }).withMessage("Dia da semana invalido"),
+    body("startTime").matches(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).withMessage("Horario inicial invalido"),
+    body("endTime").matches(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/).withMessage("Horario final invalido"),
+    body("roomName").optional({ nullable: true }).trim()
+  ],
+  validateRequest,
+  asyncHandler(async (req, res) => {
+    const classData = await findClassForManagement(req.params.id);
+    await ensureInstitutionAccess(req.user.sub, classData.institution_id);
+    await ensureActiveInstitutionSubscription(classData.institution_id);
+
+    const startTime = normalizeTime(req.body.startTime);
+    const endTime = normalizeTime(req.body.endTime);
+    if (startTime >= endTime) {
+      throw new ApiError(400, "Horario final deve ser posterior ao horario inicial");
+    }
+
+    const result = await db.query(
+      `INSERT INTO class_schedules (class_id, day_of_week, start_time, end_time, room_name)
+       VALUES (?, ?, ?, ?, ?)`,
+      [req.params.id, req.body.dayOfWeek, startTime, endTime, req.body.roomName || null]
+    );
+    await auditLog(req.user.sub, "class_schedules.create", "class_schedules", result.insertId || null, {
+      classId: req.params.id,
+      institutionId: classData.institution_id
+    });
+
+    return created(res, {
+      classId: Number(req.params.id),
+      dayOfWeek: Number(req.body.dayOfWeek),
+      startTime,
+      endTime,
+      roomName: req.body.roomName || null
+    }, "Horario criado com sucesso");
   })
 );
 

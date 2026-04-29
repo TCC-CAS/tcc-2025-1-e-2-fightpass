@@ -27,9 +27,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   const sidebarHTML = `
     <nav class="sidebar">
       <a href="dashboard.html" class="nav-link" id="nav-home" data-roles="student,instructor,institution_admin">Home</a>
-      <a href="mapa.html" class="nav-link" id="nav-mapa" data-roles="student,instructor,institution_admin">Mapa</a>
+      <a href="mapa.html" class="nav-link" id="nav-mapa" data-roles="student">Mapa</a>
       <a href="agendar.html" class="nav-link" id="nav-agendar" data-roles="student">Agendar</a>
-      <a href="planos.html" class="nav-link" id="nav-planos" data-roles="student">Planos</a>
+      <a href="planos.html" class="nav-link" id="nav-planos" data-roles="student,institution_admin">Planos</a>
       <a href="minhas-aulas.html" class="nav-link" id="nav-aulas" data-roles="student">Minhas aulas</a>
       <a href="checkin.html" class="nav-link" id="nav-checkin" data-roles="student">Check-in</a>
       <a href="gestao.html" class="nav-link" id="nav-gestao" data-roles="instructor,institution_admin">Gestão</a>
@@ -40,12 +40,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   body.insertAdjacentHTML("afterbegin", headerHTML + sidebarHTML);
 
-  if (cachedUser) {
-    document.querySelectorAll("[data-roles]").forEach((link) => {
-      const allowed = link.dataset.roles.split(",");
-      link.hidden = !allowed.includes(cachedUser.role);
-    });
-  }
+  document.querySelectorAll("[data-roles]").forEach((link) => {
+    const allowed = link.dataset.roles.split(",");
+    link.hidden = !cachedUser || !allowed.includes(cachedUser.role);
+  });
 
   const path = window.location.pathname;
   const navMap = {

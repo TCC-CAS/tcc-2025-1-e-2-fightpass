@@ -1,4 +1,3 @@
-const crypto = require("crypto");
 const express = require("express");
 const { body } = require("express-validator");
 const db = require("../../database/connection");
@@ -14,8 +13,8 @@ const {
   comparePassword
 } = require("../../lib/http");
 const { auditLog, getUserInstitutions } = require("../../lib/business");
-const { sendPasswordResetEmail } = require("../../lib/email");
 const { createTrialAccess, isValidCpf, onlyDigits } = require("../../lib/access");
+const { requestPasswordReset, resetPassword } = require("../../services/passwordResetService");
 
 const router = express.Router();
 
@@ -163,9 +162,10 @@ router.post(
         );
 
         await connection.execute(
-          `INSERT INTO institution_platform_subscriptions
-             (institution_id, monthly_fee_cents, status, starts_at, next_billing_at)
-           VALUES (?, 29900, 'active', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY))`,
+          `INSERT IGNORE INTO institution_modality (institution_id, modality_id)
+           SELECT ?, id
+           FROM modalities
+           WHERE slug IN ('boxe', 'jiu-jitsu', 'judo', 'muay-thai', 'mma', 'karate', 'taekwondo')`,
           [institutionId]
         );
       }
@@ -242,20 +242,10 @@ router.post(
   asyncHandler(async (req, res) => {
     const user = await findUserByEmail(req.body.email);
     if (user) {
-      const token = crypto.randomBytes(32).toString("hex");
-      const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
-      await db.query(
-        `INSERT INTO password_reset_tokens (email, token, expires_at)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE token = VALUES(token), expires_at = VALUES(expires_at)`,
-        [req.body.email, token, expiresAt]
-      );
-
       try {
-        const emailResult = await sendPasswordResetEmail({
-          to: user.email,
-          name: user.name,
-          token
+        const emailResult = await requestPasswordReset(user, {
+          ip: req.ip,
+          userAgent: req.headers["user-agent"]
         });
 
         if (emailResult.skipped) {
@@ -286,23 +276,7 @@ router.post(
   ],
   validateRequest,
   asyncHandler(async (req, res) => {
-    const rows = await db.query("SELECT email, expires_at FROM password_reset_tokens WHERE token = ? LIMIT 1", [req.body.token]);
-    const resetToken = rows[0];
-
-    if (!resetToken) {
-      throw new ApiError(400, "Token de redefinicao invalido");
-    }
-
-    if (new Date(resetToken.expires_at) < new Date()) {
-      throw new ApiError(400, "Token de redefinicao expirado");
-    }
-
-    const passwordHash = await hashPassword(req.body.password);
-    await db.query("UPDATE users SET password_hash = ? WHERE email = ?", [passwordHash, resetToken.email]);
-    await db.query("DELETE FROM password_reset_tokens WHERE email = ?", [resetToken.email]);
-    const user = await findUserByEmail(resetToken.email);
-    await auditLog(user ? user.id : null, "auth.reset_password", "users", user ? user.id : null);
-
+    await resetPassword(req.body.token, req.body.password);
     return success(res, null, "Senha redefinida com sucesso");
   })
 );

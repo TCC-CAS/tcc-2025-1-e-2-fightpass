@@ -78,7 +78,11 @@
       try {
         const response = await api.login(data.email, data.password);
         api.saveSession(response.data);
-        api.redirectByRole(response.data.user);
+        if (response.data.user.role === "institution_admin") {
+          window.location.href = "planos.html";
+        } else {
+          api.redirectByRole(response.data.user);
+        }
       } catch (error) {
         setMessage("#login-message", error.message, "error", error.details);
       }
@@ -113,7 +117,12 @@
           institutionName: data.institutionName || data.name
         });
         api.saveSession(response.data);
-        api.setFlash(response.data.access ? "Conta criada com teste gratuito de 1 dia." : "Conta criada com sucesso.", "success");
+        api.setFlash(
+          response.data.user.role === "institution_admin"
+            ? "Conta criada. Assine o Plano DOJO para disponibilizar aulas."
+            : response.data.access ? "Conta criada com teste gratuito de 1 dia." : "Conta criada com sucesso.",
+          "success"
+        );
         api.redirectByRole(response.data.user);
       } catch (error) {
         setMessage("#register-message", error.message, "error", error.details);
@@ -311,13 +320,25 @@
     const preview = $("#schedule-preview");
     let schedules = [];
 
+    function dateMatchesSelectedSchedule(value) {
+      const selected = schedules.find((item) => String(item.schedule.id) === scheduleSelect.value);
+      if (!selected || !value) return true;
+      return new Date(`${value}T00:00:00`).getDay() === Number(selected.schedule.day_of_week);
+    }
+
     function syncSelectedSchedule() {
       const selected = schedules.find((item) => String(item.schedule.id) === scheduleSelect.value);
       if (!selected) return;
-      bookingDate.value = nextDateForDay(selected.schedule.day_of_week);
+      const nextAvailableDate = nextDateForDay(selected.schedule.day_of_week);
+      bookingDate.min = nextAvailableDate;
+      bookingDate.step = 7;
+      bookingDate.value = nextAvailableDate;
       const end = new Date(`${bookingDate.value}T00:00:00`);
       end.setDate(end.getDate() + 28);
+      endDate.min = bookingDate.value;
+      endDate.step = 7;
       endDate.value = end.toISOString().slice(0, 10);
+      setMessage("#booking-message", `Calendário limitado para ${api.dayLabel(selected.schedule.day_of_week)}s, conforme a turma selecionada.`, "info");
     }
 
     function renderPreview() {
@@ -338,6 +359,12 @@
         ...classItem,
         schedule
       })));
+      if (!schedules.length) {
+        scheduleSelect.innerHTML = "";
+        renderPreview();
+        setMessage("#booking-message", "Nenhuma aula ativa disponível para agendamento.", "error");
+        return;
+      }
       scheduleSelect.innerHTML = schedules.map((item) => `
         <option value="${item.schedule.id}">
           ${html(item.institution_name)} - ${html(item.title)} - ${html(item.modality_name)} (${api.dayLabel(item.schedule.day_of_week)} ${api.timeLabel(item.schedule.start_time)})
@@ -351,6 +378,11 @@
     }
 
     scheduleSelect.addEventListener("change", syncSelectedSchedule);
+    bookingDate.addEventListener("change", () => {
+      if (!dateMatchesSelectedSchedule(bookingDate.value)) {
+        syncSelectedSchedule();
+      }
+    });
     recurring.addEventListener("change", () => {
       $("#recurring-fields").hidden = !recurring.checked;
     });
@@ -358,9 +390,16 @@
     $("#booking-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       setMessage("#booking-message", "Enviando agendamento...", "loading");
+      if (!dateMatchesSelectedSchedule(bookingDate.value)) {
+        setMessage("#booking-message", "Escolha uma data compatível com o dia da semana da turma selecionada.", "error");
+        return;
+      }
+      if (recurring.checked && !dateMatchesSelectedSchedule(endDate.value)) {
+        setMessage("#booking-message", "A data final da recorrência deve cair no mesmo dia da semana da turma.", "error");
+        return;
+      }
       const payload = {
-        classScheduleId: Number(scheduleSelect.value),
-        isTrial: $("#is-trial").checked
+        classScheduleId: Number(scheduleSelect.value)
       };
       try {
         const response = recurring.checked
@@ -385,13 +424,6 @@
     if (!user) return;
     const tbody = $("#bookings-table");
 
-    const treatedStatus = {
-      scheduled: "Agendada",
-      confirmed: "Confirmada",
-      missed: "Faltou",
-      cancelled: "Cancelada"
-    };
-
     async function loadBookings() {
       setMessage("#my-classes-message", "Carregando aulas...", "loading");
       try {
@@ -402,7 +434,7 @@
             <td>${api.dayLabel(item.day_of_week)}</td>
             <td>${api.timeLabel(item.start_time)}</td>
             <td><span class="badge-modalidade">${html(item.modality_name)}</span></td>
-            <td>${html(treatedStatus[item.status])}</td>
+            <td>${html(api.statusLabel(item.status))}</td>
             <td>
               <button class="btn-cancel" data-cancel="${item.id}" ${item.status === "cancelled" ? "disabled" : ""}>Cancelar</button>
             </td>
@@ -545,6 +577,66 @@
     const institutionId = currentInstitutionOrStop(user, "#management-message");
     if (!institutionId) return;
     const tbody = $("#students-table");
+    const classesTable = $("#dojo-classes-table");
+    const classForm = $("#dojo-class-form");
+    const addressForm = $("#dojo-address-form");
+    const addressPreview = $("#dojo-address-preview");
+    const subscriptionPanel = $("#dojo-subscription");
+
+    function renderSubscription(subscription) {
+      if (!subscriptionPanel) return;
+      const price = formatCurrency(subscription.price_cents || subscription.monthly_fee_cents || 6900);
+      const isActive = subscription.status === "active";
+      subscriptionPanel.innerHTML = `
+        <h2 style="font-size:18px; margin-bottom:8px;">Plano DOJO</h2>
+        <p><strong>${html(subscription.plan_name || "Plano DOJO")}</strong> - ${price}/mês</p>
+        <p style="color:${isActive ? "#64748B" : "#991B1B"};">${isActive ? `Status: ativo | Pago até: ${api.formatDate(subscription.paid_until || subscription.next_billing_at)}` : "Sem plano ativo. A instituição precisa assinar para criar ou gerenciar aulas."}</p>
+        ${user.role === "institution_admin" ? `<a class="btn-secondary" style="display:inline-block; width:auto; margin-top:12px; padding:10px 18px;" href="planos.html">${isActive ? "Gerenciar mensalidade" : "Assinar Plano DOJO"}</a>` : ""}
+      `;
+    }
+
+    function renderAddress(institution) {
+      if (!addressForm || !addressPreview) return;
+      $("#dojo-zip-code").value = institution.zip_code || "";
+      $("#dojo-number").value = institution.number || "";
+      $("#dojo-complement").value = institution.complement || "";
+      addressPreview.textContent = [
+        institution.formatted_address,
+        institution.latitude && institution.longitude ? `Coordenadas: ${institution.latitude}, ${institution.longitude}` : "Coordenadas pendentes"
+      ].filter(Boolean).join(" | ");
+    }
+
+    function renderClasses(classes) {
+      if (!classesTable) return;
+      classesTable.innerHTML = classes.length ? classes.map((item) => `
+        <tr>
+          <td>${html(item.title)}</td>
+          <td>${html(item.modality_name)}</td>
+          <td>${(item.schedules || []).map((schedule) => `${api.dayLabel(schedule.day_of_week)} ${api.timeLabel(schedule.start_time)}-${api.timeLabel(schedule.end_time)}`).join("<br>") || "-"}</td>
+          <td>${item.status === "active" ? "Ativa" : "Inativa"}</td>
+          <td>
+            <button class="btn-secondary" style="width:auto; padding:8px 12px;" data-class-status="${item.id}" data-next-status="${item.status === "active" ? "inactive" : "active"}">
+              ${item.status === "active" ? "Inativar" : "Ativar"}
+            </button>
+          </td>
+        </tr>
+      `).join("") : `<tr><td colspan="5">Nenhuma aula cadastrada.</td></tr>`;
+    }
+
+    async function loadDojoData() {
+      const [subscription, institution, classes] = await Promise.all([
+        api.request(`/dojo/subscription?institutionId=${institutionId}`),
+        api.request(`/institutions/${institutionId}`),
+        api.request(`/dojo/classes?institutionId=${institutionId}`)
+      ]);
+
+      renderSubscription(subscription.data);
+      renderAddress(institution.data);
+      renderClasses(classes.data);
+      $("#class-modality").innerHTML = institution.data.modalities.map((item) => `
+        <option value="${item.id}">${html(item.name)}</option>
+      `).join("");
+    }
 
     setMessage("#management-message", "Carregando gestão...", "loading");
     try {
@@ -559,16 +651,83 @@
         <tr>
           <td>${html(student.name)}</td>
           <td>${html(student.modality_name)}</td>
-          <td>${html(student.enrollment_status)}</td>
+          <td>${html(api.statusLabel(student.enrollment_status))}</td>
           <td>
             <a href="perfil-aluno.html?id=${student.id}">Ver perfil</a>
             <a href="avaliar-aluno.html?id=${student.id}" style="margin-left: 12px;">Avaliar</a>
           </td>
         </tr>
       `).join("") : `<tr><td colspan="4">Nenhum aluno ativo encontrado.</td></tr>`;
+      await loadDojoData();
       setMessage("#management-message", "", "info");
     } catch (error) {
       setMessage("#management-message", error.message, "error", error.details);
+    }
+
+    if (addressForm) {
+      addressForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setMessage("#management-message", "Atualizando endereço...", "loading");
+        try {
+          const data = formData(addressForm);
+          const response = await api.request(`/institutions/${institutionId}/address`, {
+            method: "PUT",
+            body: data
+          });
+          addressPreview.textContent = `${response.data.formattedAddress || "Endereço salvo"} | Status: ${api.geocodingStatusLabel(response.data.geocodingStatus)}`;
+          setMessage("#management-message", response.message, "success");
+        } catch (error) {
+          setMessage("#management-message", error.message, "error", error.details);
+        }
+      });
+    }
+
+    if (classForm) {
+      classForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setMessage("#management-message", "Criando aula...", "loading");
+        const data = formData(classForm);
+        try {
+          const response = await api.request("/classes", {
+            method: "POST",
+            body: {
+              institutionId,
+              modalityId: Number(data.modalityId),
+              title: data.title,
+              description: data.description || null,
+              capacity: Number(data.capacity),
+              dayOfWeek: Number(data.dayOfWeek),
+              startTime: data.startTime,
+              endTime: data.endTime,
+              roomName: data.roomName || null
+            }
+          });
+          classForm.reset();
+          $("#class-capacity").value = 20;
+          await loadDojoData();
+          setMessage("#management-message", response.message, "success");
+        } catch (error) {
+          setMessage("#management-message", error.message, "error", error.details);
+        }
+      });
+    }
+
+    if (classesTable) {
+      classesTable.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-class-status]");
+        if (!button) return;
+        setMessage("#management-message", "Atualizando aula...", "loading");
+        try {
+          const response = await api.request(`/classes/${button.dataset.classStatus}/status`, {
+            method: "PATCH",
+            body: { status: button.dataset.nextStatus }
+          });
+          await loadDojoData();
+          setMessage("#management-message", response.message, "success");
+        } catch (error) {
+          setMessage("#management-message", error.message, "error", error.details);
+        }
+      });
     }
   }
 
@@ -596,7 +755,7 @@
       $("#progress-list").innerHTML = progress.data.length ? progress.data.map((item) => `
         <div class="timeline-row">
           <span>${api.formatMonth(item.reference_month)}</span>
-          <strong>Nota ${item.average_score} | Presença ${item.attendance_rate}% | Risco ${html(item.risk_level)}</strong>
+          <strong>Nota ${item.average_score} | Presença ${item.attendance_rate}% | Risco ${html(api.riskLabel(item.risk_level))}</strong>
         </div>
       `).join("") : `<div class="empty-state">Sem histórico de progresso.</div>`;
       $("#evaluation-list").innerHTML = evaluations.data.length ? evaluations.data.map((item) => `
@@ -664,12 +823,115 @@
   }
 
   async function initPlanos() {
-    const user = await api.requireAuth(["student"]);
+    const user = await api.requireAuth();
     if (!user) return;
 
     const plansList = $("#plans-list");
     const currentAccess = $("#current-access");
     const paymentResult = $("#payment-result");
+
+    if (user.role !== "student") {
+      const institutionId = currentInstitutionOrStop(user, "#plans-message");
+      if (!institutionId) return;
+
+      if (user.role !== "institution_admin") {
+        setMessage("#plans-message", "A mensalidade DOJO pode ser gerenciada apenas pelo administrador da instituição.", "error");
+        return;
+      }
+
+      async function loadDojoSubscription() {
+        const response = await api.request(`/dojo/subscription?institutionId=${institutionId}`);
+        const isActive = response.data.status === "active";
+        currentAccess.innerHTML = `
+          <h2 style="font-size:18px; margin-bottom:8px;">Mensalidade DOJO</h2>
+          <p><strong>${html(response.data.plan_name || "Plano DOJO")}</strong></p>
+          <p style="color:${isActive ? "#64748B" : "#991B1B"};">${isActive ? `Status: ativo | Pago até: ${api.formatDate(response.data.paid_until || response.data.next_billing_at)}` : "Sem plano ativo. Assine para disponibilizar e gerenciar aulas."}</p>
+        `;
+      }
+
+      function renderDojoPayment(payment) {
+        paymentResult.hidden = false;
+        paymentResult.innerHTML = payment.method === "pix" ? `
+          <h2 style="font-size:18px; margin-bottom:8px;">Pix DOJO gerado</h2>
+          <p style="color:#64748B;">${html(payment.prototypeNotice)}</p>
+          <div class="qr-frame" style="display:inline-block; margin:18px 0;">
+            <img alt="QR Code Pix fictício" style="width:220px;height:220px;" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(payment.pixCode)}">
+          </div>
+          <div class="token-box">${html(payment.pixCode)}</div>
+          <button class="btn-primary" style="width:auto; margin-top:16px; padding:12px 24px;" data-confirm-dojo-payment="${payment.id}">Confirmar pagamento fictício</button>
+        ` : `
+          <h2 style="font-size:18px; margin-bottom:8px;">Boleto DOJO gerado</h2>
+          <p style="color:#64748B;">${html(payment.prototypeNotice)}</p>
+          <div class="token-box" style="margin-top:16px;">${html(payment.boletoCode)}</div>
+          <button class="btn-primary" style="width:auto; margin-top:16px; padding:12px 24px;" data-confirm-dojo-payment="${payment.id}">Confirmar pagamento fictício</button>
+        `;
+      }
+
+      setMessage("#plans-message", "Carregando plano DOJO...", "loading");
+      try {
+        await loadDojoSubscription();
+        const response = await api.request("/dojo/plans");
+        plansList.innerHTML = response.data.map((plan) => `
+          <article class="card-white" style="display:flex; flex-direction:column; gap:12px;">
+            <h2 style="font-size:20px;">${html(plan.name)}</h2>
+            <p style="color:#64748B; min-height:54px;">${html(plan.description)}</p>
+            <strong style="font-size:28px; color:var(--primary-blue);">${formatCurrency(plan.priceCents)}</strong>
+            <small style="color:#64748B;">Mensalidade para DOJO parceiro</small>
+            <label style="display:flex; align-items:flex-start; gap:10px; color:#334155; font-size:14px; line-height:1.5;">
+              <input type="checkbox" data-dojo-contract style="width:18px; height:18px; margin-top:2px;">
+              Li e aceito o contrato de parceria FightPass, autorizando a publicação das aulas do DOJO na plataforma e a cobrança mensal fictícia deste protótipo.
+            </label>
+            <button class="btn-primary" type="button" data-dojo-plan-id="${plan.id}">Gerar mensalidade</button>
+          </article>
+        `).join("");
+        setMessage("#plans-message", "", "info");
+      } catch (error) {
+        setMessage("#plans-message", error.message, "error", error.details);
+      }
+
+      plansList.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-dojo-plan-id]");
+        if (!button) return;
+        const contractAccepted = Boolean(plansList.querySelector("[data-dojo-contract]")?.checked);
+        if (!contractAccepted) {
+          setMessage("#plans-message", "Aceite o contrato de parceria antes de gerar a mensalidade.", "error");
+          return;
+        }
+        setMessage("#plans-message", "Gerando mensalidade fictícia...", "loading");
+        try {
+          const response = await api.request("/dojo/payments/simulate", {
+            method: "POST",
+            body: {
+              institutionId,
+              method: $("#payment-method").value,
+              contractAccepted
+            }
+          });
+          renderDojoPayment(response.data);
+          setMessage("#plans-message", response.message, "success");
+        } catch (error) {
+          setMessage("#plans-message", error.message, "error", error.details);
+        }
+      });
+
+      paymentResult.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-confirm-dojo-payment]");
+        if (!button) return;
+        setMessage("#plans-message", "Confirmando mensalidade fictícia...", "loading");
+        try {
+          const response = await api.request(`/dojo/payments/${button.dataset.confirmDojoPayment}/confirm`, {
+            method: "POST"
+          });
+          setMessage("#plans-message", response.message, "success");
+          paymentResult.hidden = true;
+          await loadDojoSubscription();
+        } catch (error) {
+          setMessage("#plans-message", error.message, "error", error.details);
+        }
+      });
+
+      return;
+    }
 
     async function loadAccess() {
       try {

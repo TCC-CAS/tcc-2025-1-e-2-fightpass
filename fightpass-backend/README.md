@@ -4,47 +4,36 @@ API do projeto FightPass desenvolvida em Node.js com Express e MySQL.
 
 ## Objetivo
 
-Este backend centraliza a logica de negocio da plataforma, incluindo:
+Este backend centraliza a lógica de negócio da plataforma:
 
-- autenticacao e controle de acesso
-- cadastro de usuarios e instituicoes
-- busca de academias e modalidades
-- criacao de turmas
-- agendamento e cancelamento de aulas
-- check-in por QR Code
-- avaliacao de alunos
-- dashboards de acompanhamento
+- autenticação e controle de acesso;
+- cadastro de usuários e instituições;
+- busca de academias e modalidades;
+- criação e consulta de turmas;
+- planos de acesso, teste gratuito e simulação financeira fictícia;
+- agendamento e cancelamento de aulas;
+- check-in por token/QR Code;
+- avaliação de alunos;
+- dashboards de acompanhamento;
+- auditoria simples de ações relevantes.
 
 ## Stack
 
 - Node.js
 - Express
 - MySQL
-- JWT para autenticacao
-- `express-validator` para validacoes
+- JWT para autenticação
+- `express-validator` para validações
 - SQL versionado em arquivos
 
-## Requisitos
-
-- Node.js 22+
-- npm 10+
-- MySQL 8+
-
-## Configuracao
-
-### 1. Instale as dependencias
+## Configuração
 
 ```powershell
 npm install
-```
-
-### 2. Crie o arquivo `.env`
-
-```powershell
 Copy-Item .env.example .env
 ```
 
-### 3. Preencha as variaveis de ambiente
+Variáveis principais:
 
 ```env
 PORT=3000
@@ -60,39 +49,62 @@ DB_PASSWORD=
 
 JWT_SECRET=change-this-secret
 JWT_EXPIRES_IN=8h
+
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+EMAIL_FROM=FightPass <seu-email-verificado@exemplo.com>
+PASSWORD_RESET_URL=http://127.0.0.1:5500/fightpass-frontend/redefinir-senha.html
+
+GOOGLE_GEOCODING_API_KEY=
+GEOCODING_TIMEOUT_MS=5000
+
 CHECKIN_TOKEN_TTL_SECONDS=45
 BOOKING_CANCELLATION_LIMIT_HOURS=2
 ```
 
+### Envio de email com SMTP gratuito
+
+A recuperação de senha usa SMTP quando `SMTP_USER` e `SMTP_PASS` estão configurados. O padrão do `.env.example` aponta para o Brevo SMTP, mas qualquer provedor SMTP compatível pode ser utilizado.
+
+- `SMTP_HOST`: servidor SMTP, por exemplo `smtp-relay.brevo.com`.
+- `SMTP_PORT`: porta SMTP, normalmente `587`.
+- `SMTP_SECURE`: use `false` na porta `587` e `true` na porta `465`.
+- `SMTP_USER`: login SMTP do provedor.
+- `SMTP_PASS`: senha/chave SMTP do provedor.
+- `EMAIL_FROM`: remetente validado no provedor.
+- `PASSWORD_RESET_URL`: endereço público/local da tela `redefinir-senha.html`.
+
+Sem credenciais SMTP, a API mantém o comportamento seguro: salva o token em `password_reset_tokens`, retorna mensagem genérica e registra no console que o envio foi ignorado.
+
+### CEP e geolocalizacao
+
+A consulta de endereco usa ViaCEP. Para latitude e longitude, configure `GOOGLE_GEOCODING_API_KEY`. Se a chave nao estiver configurada ou o Google falhar, o endereco e salvo com `geocoding_status` pendente/falho e pode ser regularizado depois.
+
+Endpoints principais:
+
+- `GET /api/locations/cep/:cep`: consulta CEP e tenta geocodificar.
+- `PUT /api/institutions/:id/address`: atualiza endereco do DOJO autenticado.
+- `GET /api/map/search`: retorna apenas instituicoes ativas com coordenadas salvas.
+
 ## Banco de dados
 
-### 1. Criar o banco no MySQL
+Crie o banco no MySQL:
 
 ```sql
 CREATE DATABASE fightpass CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 2. Executar as migrations
+Execute migration e seed:
 
 ```powershell
 npm run migrate
-```
-
-Arquivo principal de schema:
-
-- `src/database/migrations/001_initial_schema.sql`
-
-### 3. Executar os seeds
-
-```powershell
 npm run seed
 ```
 
-Arquivo principal de dados iniciais:
-
-- `src/database/seeders/001_seed_demo.sql`
-
-## Execucao
+## Execução
 
 Modo desenvolvimento:
 
@@ -106,99 +118,47 @@ Modo normal:
 npm start
 ```
 
-Teste rapido:
+Teste rápido:
 
 ```text
 GET http://localhost:3000/api/health
 ```
 
-## Estrutura
+O frontend estático consome esta API por padrão em `http://localhost:3000/api`.
 
-```text
-fightpass-backend/
-|-- scripts/
-|-- src/
-|   |-- app.js
-|   |-- server.js
-|   |-- config/
-|   |-- database/
-|   |   |-- migrations/
-|   |   |-- seeders/
-|   |-- lib/
-|   |-- routes/
-|   |   |-- index.js
-|   |   |-- modules/
-```
+## Módulos disponíveis
 
-## Modulos disponiveis
+- `auth`: login, cadastro, recuperação e redefinição de senha.
+- `profile`: leitura, atualização do perfil e alteração de senha.
+- `catalog`: modalidades, instituições e busca de academias.
+- `classes`: criação e consulta de turmas.
+- `dojo`: plano mensal do parceiro, assinatura, pagamento ficticio e listagem de aulas da instituicao.
+- `bookings`: agendamento simples, recorrente e cancelamento.
+- `access`: planos, acesso ativo do aluno e pagamento fictício.
+- `checkin`: geração e confirmação de token de presença.
+- `evaluations`: avaliação técnica e evolução do aluno.
+- `dashboard`: indicadores do aluno e da instituição.
 
-- `auth`: login, cadastro, recuperacao e redefinicao de senha
-- `profile`: leitura e atualizacao do perfil
-- `catalog`: modalidades, instituicoes e busca de academias
-- `classes`: criacao e consulta de turmas
-- `bookings`: agendamento simples e recorrente
-- `checkin`: geracao e confirmacao de token de presenca
-- `evaluations`: avaliacao tecnica e evolucao do aluno
-- `dashboard`: indicadores do aluno e da instituicao
+## Usuários de demonstração
 
-## Rotas principais
+Todos os usuários abaixo usam a senha `FightPass123` quando o seed é executado:
 
-### Auth
+- `contato@dojosakura.com`: administrador da instituição Dojo Sakura.
+- `carlos@dojosakura.com`: instrutor vinculado à Dojo Sakura.
+- `joao@fightpass.com`: aluno vinculado à Dojo Sakura.
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/forgot-password`
-- `POST /api/auth/reset-password`
-- `GET /api/auth/me`
-- `POST /api/auth/logout`
+## Observações
 
-### Profile
+### Atualizacoes da Entrega 3
 
-- `GET /api/profile`
-- `PUT /api/profile`
-- `PUT /api/profile/password`
+- Instituicoes cadastradas por administrador recebem o Plano DOJO de R$69 em `institution_platform_subscriptions`.
+- O Plano DOJO aparece apenas para administradores de instituicao. Alunos continuam vendo apenas `access_plans`.
+- A recuperacao de senha usa Nodemailer/SMTP, salva hash do token, expira em 30 minutos e marca tokens como utilizados.
+- O backend consulta CEP via ViaCEP e usa Google Geocoding opcional para latitude/longitude.
 
-### Catalog
-
-- `GET /api/modalities`
-- `GET /api/map/search`
-- `GET /api/institutions`
-- `GET /api/institutions/:id`
-- `GET /api/institutions/:id/students`
-
-### Classes
-
-- `GET /api/classes`
-- `GET /api/classes/:id`
-- `POST /api/classes`
-
-### Bookings
-
-- `GET /api/bookings`
-- `POST /api/bookings`
-- `POST /api/bookings/recurring`
-- `DELETE /api/bookings/:id`
-
-### Check-in
-
-- `POST /api/checkin/token`
-- `POST /api/checkin/confirm`
-- `GET /api/checkin/history`
-
-### Evaluations
-
-- `GET /api/students/:id/evaluations`
-- `POST /api/students/:id/evaluations`
-- `GET /api/students/:id/profile`
-- `GET /api/students/:id/progress`
-
-### Dashboard
-
-- `GET /api/dashboard/student`
-- `GET /api/dashboard/institution/:id`
-
-## Observacoes
-
-- O frontend ainda nao esta integrado ao backend nesta etapa.
-- O banco foi preparado para MySQL.
-- A API ja esta estruturada para integracao futura e publicacao em nuvem.
+- O frontend da Entrega 3 já utiliza a API para autenticação, catálogo, agendamentos, check-in, perfil, gestão, avaliações e dashboards.
+- O cadastro de aluno valida CPF e libera um teste gratuito de 1 dia, limitado por CPF, antes da contratação de plano.
+- A tela de planos usa cobranças fictícias por Pix ou boleto para demonstrar o fluxo financeiro. Nenhuma cobrança real é executada.
+- Instituições cadastradas por administrador recebem vínculo demonstrativo com o FightPass em `institution_platform_subscriptions`.
+- O envio real de email de recuperação usa SMTP quando as credenciais são configuradas no `.env`.
+- O mapa permanece demonstrativo no frontend, sem serviço externo de geolocalização em tempo real.

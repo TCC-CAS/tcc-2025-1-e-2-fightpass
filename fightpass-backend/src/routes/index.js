@@ -8,6 +8,7 @@ const checkinRoutes = require("./modules/checkin");
 const evaluationRoutes = require("./modules/evaluations");
 const dashboardRoutes = require("./modules/dashboard");
 const accessRoutes = require("./modules/access");
+const dojoRoutes = require("./modules/dojo");
 
 const router = express.Router();
 
@@ -24,5 +25,6 @@ router.use("/checkin", checkinRoutes);
 router.use("/", evaluationRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/", accessRoutes);
+router.use("/dojo", dojoRoutes);
 
 module.exports = router;

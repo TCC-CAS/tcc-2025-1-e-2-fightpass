@@ -49,6 +49,44 @@
     }[role] || "Usuário";
   }
 
+  function statusLabel(status) {
+    return {
+      active: "Ativo",
+      inactive: "Inativo",
+      trial: "Teste",
+      expired: "Expirado",
+      cancelled: "Cancelado",
+      scheduled: "Agendada",
+      confirmed: "Confirmada",
+      missed: "Faltou",
+      present: "Presente",
+      absent: "Ausente",
+      pending: "Pendente",
+      paid: "Pago",
+      used: "Usado",
+      failed: "Falhou",
+      manual: "Manual",
+      overdue: "Em atraso"
+    }[status] || status || "-";
+  }
+
+  function riskLabel(risk) {
+    return {
+      low: "Baixo",
+      medium: "Médio",
+      high: "Alto"
+    }[risk] || risk || "-";
+  }
+
+  function geocodingStatusLabel(status) {
+    return {
+      pending: "Pendente",
+      success: "Localizado",
+      failed: "Falhou",
+      manual: "Manual"
+    }[status] || status || "-";
+  }
+
   function firstInstitutionId(user) {
     return user && user.institutions && user.institutions[0] ? user.institutions[0].id : null;
   }
@@ -176,6 +214,9 @@
     setFlash,
     consumeFlash,
     roleLabel,
+    statusLabel,
+    riskLabel,
+    geocodingStatusLabel,
     firstInstitutionId,
     redirectByRole,
     formatDate,
