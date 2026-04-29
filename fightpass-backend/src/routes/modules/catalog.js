@@ -56,7 +56,7 @@ router.get(
   ],
   validateRequest,
   asyncHandler(async (req, res) => {
-    const conditions = ["i.status = 'active'", "a.latitude IS NOT NULL", "a.longitude IS NOT NULL"];
+    const conditions = ["i.status = 'active'"];
     const params = [];
 
     if (req.query.modality) {

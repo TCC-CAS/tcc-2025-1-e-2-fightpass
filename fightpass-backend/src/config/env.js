@@ -29,6 +29,7 @@ module.exports = {
   },
   location: {
     googleGeocodingApiKey: process.env.GOOGLE_GEOCODING_API_KEY || "",
+    openStreetMapGeocodingUrl: process.env.OPENSTREETMAP_GEOCODING_URL || "https://nominatim.openstreetmap.org/search",
     geocodingTimeoutMs: Number(process.env.GEOCODING_TIMEOUT_MS || 5000)
   },
   checkinTokenTtlSeconds: Number(process.env.CHECKIN_TOKEN_TTL_SECONDS || 45),

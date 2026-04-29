@@ -24,12 +24,18 @@ function buildFormattedAddress(address) {
   ].filter(Boolean).join(" - ");
 }
 
-async function fetchJson(url) {
+async function fetchJson(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), env.location.geocodingTimeoutMs);
 
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        ...(options.headers || {})
+      }
+    });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -114,56 +120,86 @@ async function findAddressByCep(zipCode) {
   return address;
 }
 
+async function geocodeWithGoogle(formattedAddress, address) {
+  const params = new URLSearchParams({
+    address: formattedAddress,
+    key: env.location.googleGeocodingApiKey,
+    region: "br"
+  });
+  const data = await fetchJson(`https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`);
+  const result = data.results && data.results[0];
+
+  if (data.status !== "OK" || !result) {
+    return null;
+  }
+
+  return {
+    ...address,
+    formattedAddress: result.formatted_address || formattedAddress,
+    latitude: result.geometry.location.lat,
+    longitude: result.geometry.location.lng,
+    geocodingProvider: "google",
+    geocodingStatus: "success",
+    geocodedAt: new Date()
+  };
+}
+
+async function geocodeWithOpenStreetMap(formattedAddress, address) {
+  const params = new URLSearchParams({
+    format: "jsonv2",
+    q: `${formattedAddress}, Brasil`,
+    countrycodes: "br",
+    limit: "1"
+  });
+
+  const data = await fetchJson(`${env.location.openStreetMapGeocodingUrl}?${params.toString()}`, {
+    headers: {
+      "User-Agent": `${env.appName}/1.0 (prototipo academico FightPass)`
+    }
+  });
+  const result = Array.isArray(data) ? data[0] : null;
+
+  if (!result || !result.lat || !result.lon) {
+    return null;
+  }
+
+  return {
+    ...address,
+    formattedAddress: result.display_name || formattedAddress,
+    latitude: Number(result.lat),
+    longitude: Number(result.lon),
+    geocodingProvider: "openstreetmap",
+    geocodingStatus: "success",
+    geocodedAt: new Date()
+  };
+}
+
 async function geocodeAddress(address) {
   const formattedAddress = buildFormattedAddress(address);
 
-  if (!env.location.googleGeocodingApiKey) {
-    return {
-      ...address,
-      formattedAddress,
-      geocodingProvider: "viacep",
-      geocodingStatus: "pending",
-      geocodedAt: null
-    };
-  }
-
   try {
-    const params = new URLSearchParams({
-      address: formattedAddress,
-      key: env.location.googleGeocodingApiKey,
-      region: "br"
-    });
-    const data = await fetchJson(`https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`);
-    const result = data.results && data.results[0];
-
-    if (data.status !== "OK" || !result) {
-      return {
-        ...address,
-        formattedAddress,
-        geocodingProvider: "google",
-        geocodingStatus: "failed",
-        geocodedAt: new Date()
-      };
+    if (env.location.googleGeocodingApiKey) {
+      const googleResult = await geocodeWithGoogle(formattedAddress, address);
+      if (googleResult) {
+        return googleResult;
+      }
     }
 
-    return {
-      ...address,
-      formattedAddress: result.formatted_address || formattedAddress,
-      latitude: result.geometry.location.lat,
-      longitude: result.geometry.location.lng,
-      geocodingProvider: "google",
-      geocodingStatus: "success",
-      geocodedAt: new Date()
-    };
+    const openStreetMapResult = await geocodeWithOpenStreetMap(formattedAddress, address);
+    if (openStreetMapResult) {
+      return openStreetMapResult;
+    }
   } catch (error) {
-    return {
-      ...address,
-      formattedAddress,
-      geocodingProvider: "google",
-      geocodingStatus: "failed",
-      geocodedAt: new Date()
-    };
+    // Em caso de indisponibilidade externa, a aplicação mantém o endereço e sinaliza a pendência.
   }
+
+  return {
+    ...address,
+    formattedAddress,
+    geocodingProvider: env.location.googleGeocodingApiKey ? "google/openstreetmap" : "openstreetmap",
+    geocodingStatus: "failed",
+    geocodedAt: new Date()
+  };
 }
 
 async function resolveCep(zipCode, number = null, complement = null) {

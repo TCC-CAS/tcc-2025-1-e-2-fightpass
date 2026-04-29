@@ -236,10 +236,91 @@
     const user = await api.requireAuth();
     if (!user) return;
     let selectedModality = "";
+    let institutions = [];
     const searchInput = $("#map-search");
     const modalityList = $("#modality-list");
     const institutionList = $("#institution-list");
     const details = $("#institution-details");
+    const mapElement = $("#map-view");
+    let map = null;
+    let markerLayer = null;
+
+    function numericCoordinate(value) {
+      const coordinate = Number(value);
+      return Number.isFinite(coordinate) ? coordinate : null;
+    }
+
+    function hasCoordinates(item) {
+      return numericCoordinate(item.latitude) !== null && numericCoordinate(item.longitude) !== null;
+    }
+
+    function initMap() {
+      if (!mapElement) return;
+      if (!window.L) {
+        mapElement.innerHTML = `<div class="empty-state">Mapa indisponível. Verifique a conexão com a biblioteca de mapas.</div>`;
+        return;
+      }
+
+      map = L.map(mapElement).setView([-23.55052, -46.633308], 12);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(map);
+      markerLayer = L.layerGroup().addTo(map);
+    }
+
+    async function loadInstitutionDetails(institutionId) {
+      setMessage("#map-message", "Carregando detalhes...", "loading");
+      try {
+        const response = await api.request(`/institutions/${institutionId}`);
+        const item = response.data;
+        const address = item.formatted_address
+          || [item.street, item.number, item.neighborhood, item.city, item.state, item.zip_code].filter(Boolean).join(", ");
+        details.innerHTML = `
+          <h2>${html(item.name)}</h2>
+          <p>${html(item.description || "Sem descrição cadastrada.")}</p>
+          <p><strong>Contato:</strong> ${html(item.email || "-")} ${html(item.phone || "")}</p>
+          <p><strong>Endereço:</strong> ${html(address || "Endereço não cadastrado.")}</p>
+          <p><strong>Localização:</strong> ${hasCoordinates(item) ? `${html(item.latitude)}, ${html(item.longitude)}` : "Coordenadas pendentes para este CEP."}</p>
+          <h3>Turmas vinculadas</h3>
+          ${item.classes.length ? `<ul class="simple-list">${item.classes.map((classItem) => `
+            <li>${html(classItem.title)} - ${html(classItem.modality_name)} (${api.dayLabel(classItem.day_of_week)} ${api.timeLabel(classItem.start_time)})</li>
+          `).join("")}</ul>` : `<div class="empty-state">Nenhuma turma ativa vinculada.</div>`}
+        `;
+
+        $all(".result-card").forEach((card) => {
+          card.classList.toggle("selected", card.dataset.id === String(institutionId));
+        });
+
+        if (map && hasCoordinates(item)) {
+          map.setView([numericCoordinate(item.latitude), numericCoordinate(item.longitude)], 16);
+        }
+
+        setMessage("#map-message", "", "info");
+      } catch (error) {
+        setMessage("#map-message", error.message, "error", error.details);
+      }
+    }
+
+    function renderMarkers() {
+      if (!map || !markerLayer) return;
+      markerLayer.clearLayers();
+      const bounds = [];
+
+      institutions.filter(hasCoordinates).forEach((item) => {
+        const lat = numericCoordinate(item.latitude);
+        const lng = numericCoordinate(item.longitude);
+        bounds.push([lat, lng]);
+        L.marker([lat, lng])
+          .addTo(markerLayer)
+          .bindPopup(`<strong>${html(item.name)}</strong><br>${html(item.formatted_address || [item.street, item.number, item.city, item.state].filter(Boolean).join(", "))}`)
+          .on("click", () => loadInstitutionDetails(item.id));
+      });
+
+      if (bounds.length) {
+        map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+      }
+    }
 
     async function loadInstitutions() {
       setMessage("#map-message", "Carregando academias...", "loading");
@@ -248,17 +329,19 @@
       if (searchInput.value) params.set("search", searchInput.value);
       try {
         const response = await api.request(`/map/search?${params.toString()}`);
-        if (!response.data.length) {
+        institutions = response.data;
+        if (!institutions.length) {
           institutionList.innerHTML = `<div class="empty-state">Nenhuma instituição encontrada para os filtros informados.</div>`;
         } else {
-          institutionList.innerHTML = response.data.map((item) => `
+          institutionList.innerHTML = institutions.map((item) => `
             <button class="result-card" data-id="${item.id}">
               <strong>${html(item.name)}</strong>
               <span>${html([item.neighborhood, item.city, item.state].filter(Boolean).join(" - "))}</span>
-              <small>${html(item.description || "Sem descrição cadastrada.")}</small>
+              <small>${hasCoordinates(item) ? "Localização disponível no mapa" : "Coordenadas pendentes para este CEP"}</small>
             </button>
           `).join("");
         }
+        renderMarkers();
         setMessage("#map-message", "", "info");
       } catch (error) {
         setMessage("#map-message", error.message, "error", error.details);
@@ -276,29 +359,13 @@
     institutionList.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-id]");
       if (!button) return;
-      setMessage("#map-message", "Carregando detalhes...", "loading");
-      try {
-        const response = await api.request(`/institutions/${button.dataset.id}`);
-        const item = response.data;
-        details.innerHTML = `
-          <h2>${html(item.name)}</h2>
-          <p>${html(item.description || "Sem descrição cadastrada.")}</p>
-          <p><strong>Contato:</strong> ${html(item.email || "-")} ${html(item.phone || "")}</p>
-          <p><strong>Endereço:</strong> ${html([item.street, item.number, item.neighborhood, item.city, item.state].filter(Boolean).join(", "))}</p>
-          <h3>Turmas vinculadas</h3>
-          ${item.classes.length ? `<ul class="simple-list">${item.classes.map((classItem) => `
-            <li>${html(classItem.title)} - ${html(classItem.modality_name)} (${api.dayLabel(classItem.day_of_week)} ${api.timeLabel(classItem.start_time)})</li>
-          `).join("")}</ul>` : `<div class="empty-state">Nenhuma turma ativa vinculada.</div>`}
-        `;
-        setMessage("#map-message", "", "info");
-      } catch (error) {
-        setMessage("#map-message", error.message, "error", error.details);
-      }
+      await loadInstitutionDetails(button.dataset.id);
     });
 
     searchInput.addEventListener("input", () => loadInstitutions());
 
     try {
+      initMap();
       const response = await api.request("/modalities");
       modalityList.innerHTML = [
         `<button class="filter-button active-filter" data-slug="">Todas</button>`,

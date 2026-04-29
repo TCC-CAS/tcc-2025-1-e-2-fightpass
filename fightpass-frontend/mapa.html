@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FightPass - Mapa de Academias</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="light-theme app-shell" data-page="mapa">
@@ -23,12 +24,9 @@
             <div id="modality-list" class="button-row"></div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px;">
-            <section class="card-white" style="min-height: 420px; background: #E2E8F0; position: relative; overflow: hidden;">
-                <div style="position: absolute; inset: 0; background: linear-gradient(135deg, #E2E8F0, #F8FAFC);"></div>
-                <div style="position: relative; z-index: 1; height: 100%; display: grid; place-items: center; text-align: center; color: #64748B; font-weight: 600;">
-                    <span>Serão retornados pela API</span>
-                </div>
+        <div class="map-layout">
+            <section class="card-white map-panel">
+                <div id="map-view"></div>
             </section>
 
             <aside>
@@ -43,6 +41,7 @@
 
     <script src="js/api.js"></script>
     <script src="js/layout.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/pages.js"></script>
 </body>
 </html>
